@@ -1,0 +1,110 @@
+<head>
+	<script src="http://code.jquery.com/jquery-1.11.3.min.js"></script>
+	<script>
+			$.valHooks.input = {
+				get: function( elem ) {
+					return elem.value.replace( /\r?\n/g, "\r\n" );
+			} };
+			decodeTextHL7 = function(hl7){
+			json = {};
+			// divido lo stringone per segmenti
+			hl7 = hl7.split(/\r?\n/);
+			for (i=hl7.length-1;i>0;i--){
+				if(hl7[i][3]!=='|' || hl7[i].substring(0,3).indexOf('|')>-1){
+					hl7[i-1] = ""+hl7[i-1]+hl7[i];
+					hl7.splice(i);
+				}
+			}
+			// associo al json ogni segmento trovato
+			for (i in hl7){
+				seg = hl7[i].substring(0,3);
+				json[seg] = hl7[i].substring(4).split('|');
+				for (c in json[seg]){
+					json[seg][c] = json[seg][c].split('^')
+				}
+			}
+			return json;
+		}
+		viewHL7 = function(json){
+			for (i in json){
+				hl7view.append("<div class='segmentView' id='"+i+"'>"
+					+ "<h2>"+i+"</h2><ol start='0' class='segmentViewList' id='"+i+"_list'></ol>"
+					+ "</div>"
+				);
+				for (c in json[i]){
+					if (json[i][c].length>1 || json[i][c][0] !== ''){
+						$('#'+i+'_list').append('<dt class="fieldView">'+i+'.'+(parseInt(c,10)+1)+'</dt><dd>')
+						for (cc in json[i][c]){
+							if (json[i][c][cc]!==''){
+								$('#'+i+'_list dd:last').append(""
+									+'<dt>'+i+'.'+(parseInt(c,10)+1)+'.'+(parseInt(cc,10)+1)+'</dt>'
+									+'<dd>'+json[i][c][cc]+'</dd>'
+								)
+							}
+						}
+						$('#'+i+'_list').append('</dd>')
+					}
+				}
+			}
+			h2 = $('h2');
+			dt = $('dt');
+			
+			h2.on("click",function(e){
+				targetSeg = e.currentTarget.innerHTML
+				$('#'+targetSeg+'_list').toggle()
+			});
+			dt.on("click",function(e){
+				$($(this).next('dd')).toggle()
+				if ($(this).css("color").toString() == "rgb(128, 128, 128)"){
+					$(this).css("color", "black")
+				} else {
+					$(this).css("color", "gray")
+				}
+			});			
+		}
+	</script>
+	<style>
+		body {
+			font-family: Helvetica, Arial, Sans-Serif;
+		}
+		.fieldView {
+			background-color: #ddd;
+			background: linear-gradient(to right, #eed , #fff);
+		}
+		input {
+			white-space: pre-wrap;
+		}
+		.segmentView {
+			width: 50%;
+		}
+	</style>
+</head>
+<body>
+	<script>
+		$(document).ready(function(){
+			textInput = $('textarea[name="hl7text"]');
+			textSubmit = $('input[name="hl7textSubmit"]');
+			hideEmpty = $('input[name="hideEmpty"]');
+			hl7view = $('#hl7view');
+			h2 = $('h2');
+			
+			textSubmit.on("click",function(){
+				hl7view.text("")
+				json = decodeTextHL7(textInput.val())
+				viewHL7(json)
+			});
+			
+			hideEmpty.on("click",function(){
+				dt = $("dt");
+				for (i in dt){
+					dt[i].hide()
+				}
+			});
+			
+		})
+	</script>
+	<textarea name="hl7text"></textarea>
+	<input type="submit" name="hl7textSubmit" value="Submit">
+	<input type="submit" name="hideEmpty" value="Nascondi i vuoti">
+	<div id='hl7view'></div>
+</body>
